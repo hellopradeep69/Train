@@ -9,8 +9,7 @@ end
 function M.train()
 	local file = vim.fn.expand("%:p")
 	local ext = vim.fn.expand("%:e")
-	local basename = vim.fn.expand("%:r")
-	local class = vim.fn.expand("%:t:r")
+	local basename = vim.fn.expand("%:t:r") -- just the file name without extension
 	local dir = vim.fn.expand("%:p:h")
 
 	if vim.fn.filereadable(file) == 0 then
@@ -21,9 +20,9 @@ function M.train()
 	-- Command map by file type
 	local cmd_map = {
 		py = string.format('python3 "%s"', file),
-		java = string.format('javac "%s" && java "%s"', file, class),
-		c = string.format('gcc "%s" -o "%s" && ./"%s"', file, basename, basename),
-		cpp = string.format('g++ "%s" -o "%s" && ./"%s"', file, basename, basename),
+		java = string.format('javac "%s" && java -cp "%s" "%s"', file, dir, basename),
+		c = string.format('gcc "%s" -o "%s/%s" && "%s/%s"', file, dir, basename, dir, basename),
+		cpp = string.format('g++ "%s" -o "%s/%s" && "%s/%s"', file, dir, basename, dir, basename),
 		sh = string.format('bash "%s"', file),
 		lua = string.format('lua "%s"', file),
 		js = string.format('node "%s"', file),
@@ -36,13 +35,12 @@ function M.train()
 	end
 
 	-- Make sure we are inside tmux
-	local tmux_session = os.getenv("TMUX")
-	if not tmux_session then
+	if not os.getenv("TMUX") then
 		vim.notify("⚠️ Not inside a tmux session!", vim.log.levels.ERROR)
 		return
 	end
 
-	-- Get current session name
+	-- Get current tmux session
 	local handle = io.popen("tmux display-message -p '#S'")
 	local session_name = handle:read("*a"):gsub("%s+", "")
 	handle:close()
@@ -51,7 +49,7 @@ function M.train()
 	local window_name = "Train"
 
 	-- Kill existing pane if you want (optional)
-	os.execute(string.format("tmux kill-pane -t %s:%s 2>/dev/null || true", session_name, window_name))
+	tmux(string.format("kill-pane -t %s:%s 2>/dev/null || true", session_name, window_name))
 
 	-- Check if window exists
 	local check_handle = io.popen(string.format("tmux list-windows -t %s | grep -w '%s'", session_name, window_name))
@@ -66,25 +64,14 @@ function M.train()
 		tmux(string.format("select-window -t %s:%s", session_name, window_name))
 	end
 
-	-- Prepare the full command for tmux
-	local function prepare_cmd_for_tmux(cmd)
-		-- Escape quotes and backslashes
-		cmd = cmd:gsub("\\", "\\\\")
-		cmd = cmd:gsub('"', '\\"')
-		return cmd
-	end
-
-	-- Then when sending:
-	local safe_cmd = prepare_cmd_for_tmux(cmd)
-
 	-- Send command to tmux window
 	tmux(
 		string.format(
-			[[send-keys -t %s:%s "clear && echo 'Running %s...' && %s; echo; echo '=== DONE ==='; read" C-m]],
+			[[send-keys -t %s:%s "clear && echo '\e[33m▶ Running %s...\e[0m' && %s; echo; echo '\e[32m=== DONE ===\e[0m'; read" C-m]],
 			session_name,
 			window_name,
 			file,
-			safe_cmd
+			cmd
 		)
 	)
 
