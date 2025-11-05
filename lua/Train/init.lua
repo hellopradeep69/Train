@@ -5,7 +5,7 @@ local function tmux(cmd)
 	os.execute("tmux " .. cmd)
 end
 
--- Run current file in a tmux window in the current session
+-- Run current file in tmux, reuse window if exists
 function M.train()
 	local file = vim.fn.expand("%:p")
 	local ext = vim.fn.expand("%:e")
@@ -18,7 +18,7 @@ function M.train()
 		return
 	end
 
-	-- Build command based on file type
+	-- Command map by file type
 	local cmd_map = {
 		py = string.format('python3 "%s"', file),
 		java = string.format('javac "%s" && java "%s"', file, class),
@@ -35,7 +35,7 @@ function M.train()
 		return
 	end
 
-	-- Check if inside tmux
+	-- Make sure we are inside tmux
 	local tmux_session = os.getenv("TMUX")
 	if not tmux_session then
 		vim.notify("⚠️ Not inside a tmux session!", vim.log.levels.ERROR)
@@ -47,11 +47,26 @@ function M.train()
 	local session_name = handle:read("*a"):gsub("%s+", "")
 	handle:close()
 
-	-- Create a new window in the current session
-	local window_name = "coderun"
-	os.execute(string.format("tmux new-window -t %s -n %s 2>/dev/null || true", session_name, window_name))
+	-- Window name
+	local window_name = "Train"
 
-	-- Send command to that window
+	-- Kill existing pane if you want (optional)
+	os.execute(string.format("tmux kill-pane -t %s:%s 2>/dev/null || true", session_name, window_name))
+
+	-- Check if window exists
+	local check_handle = io.popen(string.format("tmux list-windows -t %s | grep -w '%s'", session_name, window_name))
+	local exists = check_handle:read("*a")
+	check_handle:close()
+
+	if exists == "" then
+		-- Create window in current path
+		tmux(string.format("new-window -t %s -n %s -c '%s'", session_name, window_name, dir))
+	else
+		-- Select existing window
+		tmux(string.format("select-window -t %s:%s", session_name, window_name))
+	end
+
+	-- Send command to tmux window
 	tmux(
 		string.format(
 			[[send-keys -t %s:%s "clear && echo '▶ Running %s...' && %s; echo; echo '=== DONE ==='; read" C-m]],
@@ -62,18 +77,10 @@ function M.train()
 		)
 	)
 
-	-- Switch to the new window
-	tmux(string.format("select-window -t %s:%s", session_name, window_name))
-
 	vim.notify("🚀 Running " .. file .. " in tmux window [" .. window_name .. "]", vim.log.levels.INFO)
 end
 
 -- Keymap
-vim.keymap.set(
-	"n",
-	"<leader>R",
-	M.train,
-	{ noremap = true, silent = true, desc = "Run current file in tmux (coderun)" }
-)
+vim.keymap.set("n", "<leader>R", M.train, { noremap = true, silent = true, desc = "Run current file in tmux (Train)" })
 
 return M
