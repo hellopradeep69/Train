@@ -1,20 +1,23 @@
+-- lua/Train/init.lua
 local M = {}
 
--- Load options
-local options = require("train.options")
-M.options = options
+-- Load user options
+local opts = require("train.options") -- load options.lua
 
 -- Helper to run tmux commands
 local function tmux(cmd)
 	os.execute("tmux " .. cmd)
 end
 
--- Run current file in tmux
-function M.train(opts)
-	if opts then
-		M.options = vim.tbl_deep_extend("force", M.options, opts)
-	end
+-- Replace placeholders in cmd string
+local function format_cmd(template, vars)
+	return (template:gsub("%%(%w+)%%", function(k)
+		return vars[k] or "%" .. k .. "%"
+	end))
+end
 
+-- Run current file in tmux
+function M.train()
 	local file = vim.fn.expand("%:p")
 	local ext = vim.fn.expand("%:e")
 	local basename = vim.fn.expand("%:t:r")
@@ -25,13 +28,11 @@ function M.train(opts)
 		return
 	end
 
-	local cmd_template = M.options.compilers[ext]
+	local cmd_template = opts.cmd_map[ext]
 	if not cmd_template then
 		vim.notify("⚠️ Unsupported file type: " .. (ext or "unknown"), vim.log.levels.WARN)
 		return
 	end
-
-	local cmd = string.format(cmd_template, file, dir, basename)
 
 	if not os.getenv("TMUX") then
 		vim.notify("⚠️ Not inside a tmux session!", vim.log.levels.ERROR)
@@ -42,48 +43,38 @@ function M.train(opts)
 	local session_name = handle:read("*a"):gsub("%s+", "")
 	handle:close()
 
-	local win = M.options.window_name
+	local window_name = opts.window_name
 
-	-- Kill existing pane (optional)
-	tmux(string.format("kill-pane -t %s:%s 2>/dev/null || true", session_name, win))
+	-- Kill pane if exists (optional)
+	tmux(string.format("kill-pane -t %s:%s 2>/dev/null || true", session_name, window_name))
 
-	local check_handle = io.popen(string.format("tmux list-windows -t %s | grep -w '%s'", session_name, win))
+	-- Check if window exists
+	local check_handle = io.popen(string.format("tmux list-windows -t %s | grep -w '%s'", session_name, window_name))
 	local exists = check_handle:read("*a")
 	check_handle:close()
 
 	if exists == "" then
-		tmux(string.format("new-window -t %s -n %s -c '%s'", session_name, win, dir))
+		tmux(string.format("new-window -t %s -n %s -c '%s'", session_name, window_name, dir))
 	else
-		tmux(string.format("select-window -t %s:%s", session_name, win))
+		tmux(string.format("select-window -t %s:%s", session_name, window_name))
 	end
 
-	local pre_clear = M.options.clear_before_run and "clear && " or ""
-	local output_color = M.options.colors.output
-	local done_color = M.options.colors.done
-	local pause_cmd = M.options.post_run_cmd
+	-- Format command
+	local cmd = format_cmd(cmd_template, { file = file, dir = dir, basename = basename })
 
-	local final_cmd = string.format(
-		[[send-keys -t %s:%s "%s echo '%s === OUTPUT %s === %s' && %s; echo; echo '%s=== DONE ===%s'; %s" C-m]],
-		session_name,
-		win,
-		pre_clear,
-		output_color,
-		file,
-		"\27[0m",
-		cmd,
-		done_color,
-		"\27[0m",
-		pause_cmd
+	-- Send to tmux
+	tmux(
+		string.format(
+			[[send-keys -t %s:%s "clear && echo '\e[33m === OUTPUT %s ===\e[0m' && %s; echo; echo '\e[32m=== DONE ===\e[0m'; read" C-m]],
+			session_name,
+			window_name,
+			file,
+			cmd
+		)
 	)
-
-	tmux(final_cmd)
 end
 
--- Setup function for external configuration
-function M.setup(opts)
-	if opts then
-		M.options = vim.tbl_deep_extend("force", M.options, opts)
-	end
-end
+-- Keymap
+vim.keymap.set("n", "<leader>R", M.train, { noremap = true, silent = true, desc = "Run current file in tmux (Train)" })
 
 return M
