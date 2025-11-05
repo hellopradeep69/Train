@@ -59,8 +59,23 @@ function M.train()
 		tmux(string.format("select-window -t %s:%s", session_name, window_name))
 	end
 
+	-- ✅ If Makefile exists, use make
+	local makefile_exists = vim.fn.filereadable(dir .. "/Makefile") == 1
+	local cmd
+
+	if makefile_exists then
+		cmd = "make"
+	else
+		local cmd_template = opts.cmd_map[ext]
+		if not cmd_template then
+			vim.notify("Unsupported file type: " .. (ext or "unknown"), vim.log.levels.WARN)
+			return
+		end
+		cmd = format_cmd(cmd_template, { file = file, dir = dir, basename = basename })
+	end
+
 	-- Format command
-	local cmd = format_cmd(cmd_template, { file = file, dir = dir, basename = basename })
+	-- local cmd = format_cmd(cmd_template, { file = file, dir = dir, basename = basename })
 
 	local tmp_script = dir .. "/.train_tmp.sh"
 	local f = io.open(tmp_script, "w")
