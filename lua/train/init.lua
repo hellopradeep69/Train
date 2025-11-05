@@ -24,18 +24,18 @@ function M.train()
 	local dir = vim.fn.expand("%:p:h")
 
 	if vim.fn.filereadable(file) == 0 then
-		vim.notify("❌ File not found: " .. file, vim.log.levels.ERROR)
+		vim.notify("File not found: " .. file, vim.log.levels.ERROR)
 		return
 	end
 
 	local cmd_template = opts.cmd_map[ext]
 	if not cmd_template then
-		vim.notify("⚠️ Unsupported file type: " .. (ext or "unknown"), vim.log.levels.WARN)
+		vim.notify("Unsupported file type: " .. (ext or "unknown"), vim.log.levels.WARN)
 		return
 	end
 
 	if not os.getenv("TMUX") then
-		vim.notify("⚠️ Not inside a tmux session!", vim.log.levels.ERROR)
+		vim.notify("Not inside a tmux session!", vim.log.levels.ERROR)
 		return
 	end
 
@@ -71,7 +71,6 @@ clear
 echo -e '\e[33m === OUTPUT %s ===\e[0m'
 %s
 echo
--- read
 ]],
 		file,
 		cmd
@@ -93,9 +92,6 @@ echo
 	-- 	)
 	-- )
 end
-
--- Keymap
-vim.keymap.set("n", "<leader>R", M.train, { noremap = true, silent = true, desc = "Run current file in tmux (Train)" })
 
 -- At the end of init.lua
 function M.setup(user_opts)
