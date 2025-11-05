@@ -71,7 +71,7 @@ clear
 echo -e '\e[33m === OUTPUT %s ===\e[0m'
 %s
 echo
-read
+-- read
 ]],
 		file,
 		cmd
