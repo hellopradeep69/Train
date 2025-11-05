@@ -65,7 +65,7 @@ end
 vim.keymap.set(
 	"n",
 	"<leader>R",
-	M.run_in_tmux,
+	M.train,
 	{ noremap = true, silent = true, desc = "Run current file in tmux (coderun)" }
 )
 
