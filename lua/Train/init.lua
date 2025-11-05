@@ -1,5 +1,11 @@
 local M = {}
 
+-- Color
+local RED = "\27[31m"
+local GREEN = "\27[32m"
+local YELLOW = "\27[33m"
+local RESET = "\27[0m"
+
 -- Helper to run tmux commands
 local function tmux(cmd)
 	os.execute("tmux " .. cmd)
@@ -67,15 +73,29 @@ function M.train()
 	end
 
 	-- Send command to tmux window
+	-- Send colored commands to tmux window
 	tmux(
 		string.format(
-			[[send-keys -t %s:%s "clear && echo '▶ Running %s...' && %s; echo; echo '=== DONE ==='; read" C-m]],
+			[[send-keys -t %s:%s "clear && echo '%s▶ Running %s...%s' && %s; echo; echo '%s=== DONE ===%s'; read" C-m]],
 			session_name,
 			window_name,
+			GREEN,
 			file,
-			cmd
+			RESET,
+			cmd,
+			YELLOW,
+			RESET
 		)
 	)
+	-- tmux(
+	-- 	string.format(
+	-- 		[[send-keys -t %s:%s "clear && echo '▶ Running %s...' && %s; echo; echo '=== DONE ==='; read" C-m]],
+	-- 		session_name,
+	-- 		window_name,
+	-- 		file,
+	-- 		cmd
+	-- 	)
+	-- )
 
 	vim.notify("🚀 Running " .. file .. " in tmux window [" .. window_name .. "]", vim.log.levels.INFO)
 end
