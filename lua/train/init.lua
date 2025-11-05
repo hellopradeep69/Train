@@ -77,4 +77,13 @@ end
 -- Keymap
 vim.keymap.set("n", "<leader>R", M.train, { noremap = true, silent = true, desc = "Run current file in tmux (Train)" })
 
+-- At the end of init.lua
+function M.setup(user_opts)
+	if user_opts then
+		for k, v in pairs(user_opts) do
+			opts[k] = v
+		end
+	end
+end
+
 return M
