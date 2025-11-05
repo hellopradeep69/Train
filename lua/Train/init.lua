@@ -66,14 +66,25 @@ function M.train()
 		tmux(string.format("select-window -t %s:%s", session_name, window_name))
 	end
 
+	-- Prepare the full command for tmux
+	local function prepare_cmd_for_tmux(cmd)
+		-- Escape quotes and backslashes
+		cmd = cmd:gsub("\\", "\\\\")
+		cmd = cmd:gsub('"', '\\"')
+		return cmd
+	end
+
+	-- Then when sending:
+	local safe_cmd = prepare_cmd_for_tmux(cmd)
+
 	-- Send command to tmux window
 	tmux(
 		string.format(
-			[[send-keys -t %s:%s "clear && echo '▶ Running %s...' && %s; echo; echo '=== DONE ==='; read" C-m]],
+			[[send-keys -t %s:%s "clear && echo 'Running %s...' && %s; echo; echo '=== DONE ==='; read" C-m]],
 			session_name,
 			window_name,
 			file,
-			cmd
+			safe_cmd
 		)
 	)
 
