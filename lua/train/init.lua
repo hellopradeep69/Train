@@ -62,16 +62,36 @@ function M.train()
 	-- Format command
 	local cmd = format_cmd(cmd_template, { file = file, dir = dir, basename = basename })
 
+	local tmp_script = dir .. "/.train_tmp.sh"
+	local f = io.open(tmp_script, "w")
+	f:write(string.format(
+		[[
+#!/bin/bash
+clear
+echo -e '\e[33m === OUTPUT %s ===\e[0m'
+%s
+echo
+read
+]],
+		file,
+		cmd
+	))
+	f:close()
+	os.execute("chmod +x " .. tmp_script)
+
+	-- Then send to tmux:
+	tmux(string.format("send-keys -t %s:%s '%s' C-m", session_name, window_name, tmp_script))
+
 	-- Send to tmux
-	tmux(
-		string.format(
-			[[send-keys -t %s:%s "clear && echo '\e[33m === OUTPUT %s ===\e[0m' && %s; echo; echo '\e[32m=== DONE ===\e[0m'; read" C-m]],
-			session_name,
-			window_name,
-			file,
-			cmd
-		)
-	)
+	-- tmux(
+	-- 	string.format(
+	-- 		[[send-keys -t %s:%s "clear && echo '\e[33m === OUTPUT %s ===\e[0m' && %s; echo; echo '\e[32m=== DONE ===\e[0m'; read" C-m]],
+	-- 		session_name,
+	-- 		window_name,
+	-- 		file,
+	-- 		cmd
+	-- 	)
+	-- )
 end
 
 -- Keymap
