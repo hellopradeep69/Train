@@ -65,14 +65,15 @@ function M.train()
 		cmd = format_cmd(cmd_template, { file = file, dir = dir, basename = basename })
 	end
 
-	-- Cleanly run command in tmux (no tmp.sh)
+	-- Escape the ANSI sequences safely for tmux
 	local full_cmd = string.format(
-		[[clear && echo -e '\e[33m=== OUTPUT %s ===\e[0m'; %s; echo; echo -e '\e[32m=== DONE ===\e[0m'; read]],
+		[[clear && printf '\033[33m=== OUTPUT %s ===\033[0m\n'; %s; echo; printf '\033[32m=== DONE ===\033[0m\n'; read]],
 		file,
 		cmd
 	)
 
-	tmux(string.format("send-keys -t %s:%s '%s' C-m", session_name, window_name, full_cmd))
+	-- Use double quotes around the command so tmux interprets it correctly
+	tmux(string.format('send-keys -t %s:%s "%s" C-m', session_name, window_name, full_cmd))
 end
 
 function M.setup(user_opts)
