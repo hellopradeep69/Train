@@ -67,7 +67,7 @@ function M.train()
 
 	-- Escape the ANSI sequences safely for tmux
 	local full_cmd = string.format(
-		[[clear && printf '\033[33m=== OUTPUT %s ===\033[0m\n'; %s; echo; printf '\033[32m=== DONE ===\033[0m\n'; read]],
+		[[clear && printf '\033[33m=== OUTPUT %s ===\033[0m\n'; %s; echo; printf '\033[32m=== DONE ===\033[0m\n']],
 		file,
 		cmd
 	)
