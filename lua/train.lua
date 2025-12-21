@@ -32,12 +32,14 @@ function M.add()
 
 	table.insert(entries, path)
 	vim.fn.writefile(entries, list_path)
+	M.load()
 
 	vim.notify("Added: " .. vim.fn.fnamemodify(path, ":t"))
 end
 
 -- list args
 function M.list()
+	M.load()
 	local args = vim.fn.argv()
 	local filenames = {}
 
@@ -51,8 +53,17 @@ end
 -- go to arg num i.e arg1
 function M.get(num)
 	vim.cmd.argu(num)
-	-- i dont know if i wnat this
 	-- vim.cmd.args()
+end
+
+-- next
+function M.next()
+	vim.cmd.next()
+end
+
+-- prev
+function M.prev()
+	vim.cmd.prev()
 end
 
 -- TODO: write
@@ -64,31 +75,56 @@ function M.load()
 		return
 	end
 
+	vim.cmd("%argdelete")
+
 	for line in file:lines() do
 		pcall(function()
 			vim.cmd.arge(line)
 			vim.cmd.argded()
 		end)
 	end
+
+	file:close()
+	vim.cmd.e()
 end
 
 function M.edit()
 	local list_path = file_list()
-	local buf = vim.api.nvim_create_buf(false, false)
-	vim.api.nvim_buf_set_name(buf, list_path)
+
+	local buf = vim.api.nvim_create_buf(false, true)
+
 	vim.api.nvim_buf_set_lines(buf, 0, -1, false, vim.fn.readfile(list_path))
-	vim.api.nvim_open_win(buf, true, {
+
+	local win_id = vim.api.nvim_open_win(buf, true, {
 		relative = "win",
 		row = math.floor((vim.o.lines - 13) / 2),
 		col = math.floor((vim.o.columns - (vim.o.columns * 0.6)) / 2),
 		width = 75,
 		height = 10,
 	})
+
+	vim.api.nvim_set_option_value("relativenumber", false, { win = win_id })
+
+	local function Save()
+		local content = vim.api.nvim_buf_get_lines(buf, 0, -1, false)
+		vim.fn.writefile(content, list_path)
+		vim.api.nvim_win_close(win_id, true)
+		M.load()
+	end
+
+	vim.api.nvim_create_autocmd("BufLeave", {
+		buffer = buf,
+		callback = function()
+			Save()
+		end,
+	})
+
+	vim.keymap.set("n", "q", Save, { buffer = buf })
+	vim.keymap.set("n", "<esc>", Save, { buffer = buf })
 end
 
 function M.setup(opts)
 	opts = opts or {}
-	vim.keymap.set("n", "<leader>yu", M.list, {})
 end
 
 -- return
