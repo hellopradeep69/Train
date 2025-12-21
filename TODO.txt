@@ -1,0 +1,5 @@
+create a Data that is .local/share/Train x
+Dir Name Train X
+project name x
+absolute path stored x
+load list problem
