@@ -52,6 +52,7 @@ end
 
 -- go to arg num i.e arg1
 function M.get(num)
+	M.load()
 	vim.cmd.argu(num)
 	-- vim.cmd.args()
 end
